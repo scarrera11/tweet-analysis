@@ -1,0 +1,635 @@
+---
+title: "Analyzing tweets about Harry and Meghan on Oprah"
+output: html_document
+---
+
+### Load libraries
+```{r load lib, warning=F, message=F, }
+library(rtweet)
+library(tidyverse)
+library(lubridate)
+```
+
+### Enter authentication information
+You will need a Twitter developer account to do this. 
+With that account you will have an appnam, consumer key, and consumer secret. Save those to the following objects.
+```{r twitter authentication, echo = F, eval = F}
+appname <- "sofias-research"
+
+key <- "7wwglhVC1aHe3RImPhpGrCn6t"
+
+apisecret <- "z80gBrzosE87Yuv6Q9yHIeJOZJPjckRUMUOsNhMt5yBpQbdUu8"
+
+token <- "1129221788934823939-yTxGQryuugcVBQT1wrdYacHXur2Kyh"
+
+tokensecret <- "T1JPjdcXnmxNtNENmX5uUIVD3z2swxbLfrjtV4lQMwiXQ"
+
+```
+
+```{r authentication example, eval = F}
+appname <- "namegoeshere"
+
+key <- "apikeygoeshere"
+
+apisecret <- "apisecretkeygoeshere"
+
+token <- "accesstokengoeshere"
+
+tokensecret <- "tokensecretgoeshere"
+
+
+```
+
+Using these objects you can now create a token that authenticates your access to Twitter data.
+
+Running this code should open a new window in your browser which will indicate if the aunthentication was successful. 
+```{r token, eval = F}
+twitter_token <- create_token(
+  app = appname,
+  consumer_key = key,
+  consumer_secret = apisecret,
+  access_token = token, 
+  access_secret = tokensecret
+)
+
+```
+
+
+### Pull data on a specific hashtag
+Let's focuse on a recent event in the news -- Meghan and Harry's interview with Oprah
+
+I'll look at one hashtag: #HarryandMeghanonOprah
+
+```{r pull tweets, eval = F}
+interview <- search_tweets("#HarryandMeghanonOprah", n=18000, include_rts=FALSE)
+
+## save as csv
+## this way always working with same data, not re-pulling from twitter every time
+write_as_csv(interview, "twitterinterviewdata.csv")
+
+```
+
+```{r save and read in as csv}
+interview <- read.csv("twitterinterviewdata.csv", header = T, stringsAsFactors = F)
+
+```
+
+### Let's clean and tidy the data
+```{r clean}
+## Date and time tweet was sent
+data <- interview %>%
+  # separate the created_at column into a date and a time column
+  separate(created_at, into = c("Date", "Time"), sep = " ", remove = F) %>%
+  # using lubridate functions make Date and Time the correct formats
+  mutate(Date = ymd(Date), Time = hms(Time))
+
+## let's see what range of dates we have
+range(data$Date)
+## so we are looking at tweets from mar 8th until mar 14
+
+## confirm that each row is a unique tweet (or quote tweet)
+data <- data %>%
+  distinct(Date, Time, screen_name, text, .keep_all = T)
+
+data$lang <- as.factor(data$lang)
+unique(data$lang)
+
+### write out full languages
+data <- data %>%
+  mutate(language = case_when(
+    lang == "ar" ~ "Arabic",
+    lang == "cs" ~ "Czech", 
+    lang == "cy" ~ "cy", 
+    lang == "da" ~ "Danish",
+    lang == "de" ~ "German",
+    lang == "el" ~ "Greek", 
+    lang == "en" ~ "English",
+    lang == "es" ~ "Spanish",
+    lang == "fr" ~ "French",
+    lang == "hu" ~ "Hungarian",
+    lang == "ht" ~ "ht", 
+    lang == "ko" ~ "Korean", 
+    lang == "in" ~ "Indonesian",
+    lang == "it" ~ "Italian",
+    lang == "ja" ~ "Japanese",
+    lang == "nl" ~ "Dutch",
+    lang == "pl" ~ "Polish",
+    lang == "pt" ~ "Portuguese",
+    lang == "tl" ~ "tl",
+    lang == "ta" ~ "ta", 
+    lang == "und" ~ "Undetected",
+    lang == "ht" ~ "ht",
+    lang == "ca" ~ "ca",
+    lang == "lt" ~ "lt", 
+    lang == "mr" ~ "mr", 
+    lang == "ro" ~ "Romanian",
+    lang == "ru" ~ "Russian", 
+    lang == "tr" ~ "Turkish",
+    lang == "zh" ~ "Chinese",
+    lang == "is" ~ "is",
+    lang == "sl" ~ "sl",
+    lang == "fi" ~ "Finnish",
+    lang == "cs" ~ "Czech",
+    lang == "vi" ~ "Vietnamese",
+    lang == "et" ~ "et",
+    lang == "sv" ~ "Swedish",
+    lang == "uk" ~ "Ukranian",
+    lang == "hi" ~ "Hindi",
+    lang == "fa" ~ "Persian",
+    lang == "ne" ~ "ne",
+    lang == "th" ~ "Thai",
+    lang == "lv" ~ "lv",
+    lang == "no" ~ "Norwegian",
+    lang == "pa" ~ "pa",
+    lang == "ru" ~ "Russian",
+    lang == "te" ~ "te",
+    lang == "si" ~ "si",
+    lang == "ur" ~ "Urdu",
+    lang == "gu" ~ "gu"
+  ))
+data$language <- as.factor(data$language)
+```
+
+## Analyze the data on this hashtag
+
+### When are people tweeting about this?
+```{r freq date}
+## interview aired mar 7, in the evening (EST)
+
+freq_date <- data %>%
+  ## want to know # of tweets in each language
+  group_by(Date) %>%
+  ## calculate summary variables
+  summarise(n_tweets = n(), n_og_tweets = sum(is_quote == "FALSE"), n_quotes = sum(is_quote == "TRUE"))
+
+
+ggplot(freq_date, aes(Date, n_tweets)) +
+  geom_col()
+
+## let's rename the axes
+ggplot(freq_date, aes(Date, n_tweets)) +
+  geom_col() +
+  ylab("Number of tweets") +
+  xlab("Date")
+
+### that is how to create the dataframe and plots yourself. But actually, there is a ggplot function that will do this for you, using the created_at column from the tweet data directly
+ts_plot(data, "days")
+ts_plot(data, "hours")
+
+```
+
+
+```{r freq language}
+## interview aired mar 7, in the evening (EST)
+freq_lang <- data %>%
+  ## want to know # of tweets in each language
+  group_by(language) %>%
+  ## calculate summary variables
+  summarise(n_tweets = n(), n_og_tweets = sum(is_quote == "FALSE"), n_quotes = sum(is_quote == "TRUE"))
+
+
+ggplot(freq_lang, aes(language, n_tweets)) +
+  geom_col()
+
+## let's rename the axes
+ggplot(freq_lang, aes(language, n_tweets)) +
+  geom_col() +
+  ylab("Number of tweets") +
+  xlab("Language")
+
+## let's make the x tick labels more legible by changing the angle at which they're written
+ggplot(freq_lang, aes(language, n_tweets)) +
+  geom_col() +
+  ylab("Number of tweets") +
+  xlab("Language") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+## the languages are written in alphabetical order. let's order them by their y axis value
+### there are a few ways to do this, but let's use dplyr functions
+freq_lang <- freq_lang %>%
+  # arrange in descending order
+  arrange(desc(n_tweets)) %>%
+  # update the factor levels
+  mutate(language = factor(language, levels = language))
+### now make the plot again
+ggplot(freq_lang, aes(language, n_tweets)) +
+  geom_col() +
+  ylab("Number of tweets") +
+  xlab("Language") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+## one value is much larger than the others
+### let's use facet_zoom from the ggforce package to show the original graph and another graph, zoomed in on the smaller values. 
+library(ggforce)
+ggplot(freq_lang, aes(language, n_tweets)) +
+  geom_col() +
+  ylab("Number of tweets") +
+  xlab("Language") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05)) +
+  facet_zoom(ylim = c(0, 1500))
+
+## I like the facet zoom, but the graph is very crowded because of all the languages. Let's focus on the 10 most used languages in these tweets
+## we already ordered the dataframe by  ntweets, so i'll select the first 10 rows
+freq_lang_most <- freq_lang[1:10, ]
+## and now make the same plot with this smaller dataset
+ggplot(freq_lang_most, aes(language, n_tweets)) +
+  geom_col() +
+  ylab("Number of tweets") +
+  xlab("Language") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05)) +
+  facet_zoom(ylim = c(0, 1500))
+  
+```
+
+### where are people tweeting from?
+```{r location}
+loc <- data %>% 
+  ### lots of users turn off location data, so we can remove NAs
+  filter(!is.na(place_full_name)) %>% 
+  count(place_full_name, sort = TRUE) 
+# %>% 
+  ## look at top 5 locations
+  #top_n(5)
+
+## this doesn't seem very helpful
+## most people didn't show location (96% of tweets)
+sum(is.na(data$place_full_name)) / length(data$place_full_name)
+```
+
+### user id
+```{r user id}
+## who is tweeting the most?
+
+freq_user <- data %>%
+  ## want to know # of tweets per user
+  group_by(user_id, language) %>%
+  ## calculate summary variables
+  summarise(n_tweets = n(), n_og_tweets = sum(is_quote == "FALSE"), n_quotes = sum(is_quote == "TRUE"))
+
+## how often are individuals tweeting?
+ggplot(freq_user) +
+  geom_histogram(aes(n_tweets))
+
+mean(freq_user$n_tweets)
+quantile(freq_user$n_tweets)
+
+## what languages have the most unique users
+users_lang <- freq_user %>%
+  group_by(language) %>%
+  summarise(n_users = n(), n_tweets = sum(n_tweets))
+
+## before we plot, I'll use what we learned above to make the graph easier to read. 
+## I'll arrange the languages in order of how many users used each language
+users_lang <- users_lang %>%
+  # arrange in descending order
+  arrange(desc(n_users)) %>%
+  # update the factor levels
+  mutate(language = factor(language, levels = language))
+### now make the plot 
+ggplot(users_lang, aes(language, n_users)) +
+  geom_col() +
+  ylab("Number of users") +
+  xlab("Language") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+## pretty good, but let's focus on the top 5 languages
+lang_most_users <- users_lang[1:5, ]
+ggplot(lang_most_users, aes(language, n_users)) +
+  geom_col() +
+  ylab("Number of users") +
+  xlab("Language") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05)) +
+  facet_zoom(ylim = c(0,1000))
+```
+
+## what are the most common hashtags used in the same tweets?
+```{r hashtags}
+hashtags <- data$hashtags
+
+hashtags <- unlist(hashtags)
+
+hashtags_data <- as.data.frame(hashtags)
+## in order for all hashtags (multiple hashtags in one tweet) to be a separate data point, need to do this from the rtweet data (not from the saved csv)
+## so I will save this hashtag data as a csv now
+write.csv(hashtags_data, "hashtags_data_all.csv", row.names = F)
+
+hashtags_all <- hashtags_data %>%
+  ## make all lowercase 
+  mutate(hashtags = tolower(hashtags))
+
+hashtags_group <- hashtags_all %>%
+  group_by(hashtags) %>%
+  summarise(n_tweets = n()) %>%
+  filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
+
+mean(hashtags_group$n_tweets)
+median(hashtags_group$n_tweets)
+quantile(hashtags_group$n_tweets)
+
+## top 10 hashtags
+hashtags_most <- hashtags_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+hashtags_most <- hashtags_most[1:10, ]
+
+ggplot(hashtags_most, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+```
+
+## the previous graph shows us the top 10 hashtags over the last week. 
+## how did the accompanying hashtags change as the days passed? 
+```{r hashtags by day}
+## a few ways to do this
+### I'll use a simple though not the most efficient way for now
+
+### I'll create different datasets for each date
+#### FIRST DAY
+firstday <- data %>%
+  filter(Date == ymd("20210308"))
+
+firstdayhash <- unlist(firstday$hashtags)
+
+firstdayhash_data <- as.data.frame(firstdayhash)
+
+firstdayhash_data <- firstdayhash_data %>%
+  rename(hashtags = firstdayhash) %>%
+  ## make all lowercase 
+  mutate(hashtags = tolower(hashtags))
+
+firstday_group <- firstdayhash_data %>%
+  group_by(hashtags) %>%
+  summarise(n_tweets = n()) %>%
+  ## I don't want to consider the hashtag I selected these tweets by (harryandmeghanonoprah)
+  filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
+
+## top 10 hashtags
+firstday_most <- firstday_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+firstday_most <- firstday_most[1:10, ]
+  
+ggplot(firstday_most, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+## A lot of these hashtags are just harry or meghan or oprah. let's remove those to get a better sense of the other topics connected to this
+## I don't want to consider hashtags just about harry meghan and oprah
+firstday_group <- firstday_group %>%
+  filter(!grepl("harry", firstday_group$hashtags)) 
+firstday_group <- firstday_group %>%
+  filter(!grepl("meghan", firstday_group$hashtags)) 
+firstday_group <- firstday_group %>%
+  filter(!grepl("oprah", firstday_group$hashtags))
+
+
+## top 10 hashtags
+firstday_most <- firstday_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+firstday_most <- firstday_most[1:10, ]
+  
+ggplot(firstday_most, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+## This is much more interesting instead of just seeing the three people's names involved in the interview
+## let's do this for the rest of the days
+
+
+#### SECOND DAY
+secondday <- data %>%
+  filter(Date == ymd("20210309"))
+
+seconddayhash <- unlist(secondday$hashtags)
+
+seconddayhash_data <- as.data.frame(seconddayhash)
+
+seconddayhash_data <- seconddayhash_data %>%
+  rename(hashtags = seconddayhash) %>%
+  ## make all lowercase 
+  mutate(hashtags = tolower(hashtags))
+
+secondday_group <- seconddayhash_data %>%
+  group_by(hashtags) %>%
+  summarise(n_tweets = n()) %>%
+  filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
+
+secondday_group <- secondday_group %>%
+  filter(!grepl("harry", secondday_group$hashtags)) 
+secondday_group <- secondday_group %>%
+  filter(!grepl("meghan", secondday_group$hashtags)) 
+secondday_group <- secondday_group %>%
+  filter(!grepl("oprah", secondday_group$hashtags))
+## top 10 hashtags
+secondday_most <- secondday_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+secondday_most <- secondday_most[1:10, ]
+  
+ggplot(secondday_most, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+
+#### THIRD DAY
+thirdday <- data %>%
+  filter(Date == ymd("20210310"))
+
+thirddayhash <- unlist(thirdday$hashtags)
+
+thirddayhash_data <- as.data.frame(thirddayhash)
+
+thirddayhash_data <- thirddayhash_data %>%
+  rename(hashtags = thirddayhash) %>%
+  ## make all lowercase 
+  mutate(hashtags = tolower(hashtags))
+
+thirdday_group <- thirddayhash_data %>%
+  group_by(hashtags) %>%
+  summarise(n_tweets = n()) %>%
+  filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
+
+thirdday_group <- thirdday_group %>%
+  filter(!grepl("harry", thirdday_group$hashtags)) 
+thirdday_group <- thirdday_group %>%
+  filter(!grepl("meghan", thirdday_group$hashtags)) 
+thirdday_group <- thirdday_group %>%
+  filter(!grepl("oprah", thirdday_group$hashtags))
+
+## top 10 hashtags
+thirdday_most <- thirdday_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+thirdday_most <- thirdday_most[1:10, ]
+  
+ggplot(thirdday_most, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+
+#### FOURTH DAY
+fourthday <- data %>%
+  filter(Date == ymd("20210311"))
+
+fourthdayhash <- unlist(fourthday$hashtags)
+
+fourthdayhash_data <- as.data.frame(fourthdayhash)
+
+fourthdayhash_data <- fourthdayhash_data %>%
+  rename(hashtags = fourthdayhash) %>%
+  ## make all lowercase 
+  mutate(hashtags = tolower(hashtags))
+
+fourthday_group <- fourthdayhash_data %>%
+  group_by(hashtags) %>%
+  summarise(n_tweets = n()) %>%
+  filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
+
+fourthday_group <- fourthday_group %>%
+  filter(!grepl("harry", fourthday_group$hashtags)) 
+fourthday_group <- fourthday_group %>%
+  filter(!grepl("meghan", fourthday_group$hashtags)) 
+fourthday_group <- fourthday_group %>%
+  filter(!grepl("oprah", fourthday_group$hashtags))
+
+## top 10 hashtags
+fourthday_most <- fourthday_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+fourthday_most <- fourthday_most[1:10, ]
+  
+ggplot(fourthday_most, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+
+#### FIFTH DAY
+fifthday <- data %>%
+  filter(Date == ymd("20210312"))
+
+fifthdayhash <- unlist(fifthday$hashtags)
+
+fifthdayhash_data <- as.data.frame(fifthdayhash)
+
+fifthdayhash_data <- fifthdayhash_data %>%
+  rename(hashtags = fifthdayhash) %>%
+  ## make all lowercase 
+  mutate(hashtags = tolower(hashtags))
+
+fifthday_group <- fifthdayhash_data %>%
+  group_by(hashtags) %>%
+  summarise(n_tweets = n()) %>%
+  filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
+
+fifthday_group <- fifthday_group %>%
+  filter(!grepl("harry", fifthday_group$hashtags)) 
+fifthday_group <- fifthday_group %>%
+  filter(!grepl("meghan", fifthday_group$hashtags)) 
+fifthday_group <- fifthday_group %>%
+  filter(!grepl("oprah", fifthday_group$hashtags))
+
+## top 10 hashtags
+fifthday_most <- fifthday_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+fifthday_most <- fifthday_most[1:10, ]
+  
+ggplot(fifthday_most, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+
+#### SIXTH DAY
+sixthday <- data %>%
+  filter(Date == ymd("20210313"))
+
+sixthdayhash <- unlist(sixthday$hashtags)
+
+sixthdayhash_data <- as.data.frame(sixthdayhash)
+
+sixthdayhash_data <- sixthdayhash_data %>%
+  rename(hashtags = sixthdayhash) %>%
+  ## make all lowercase 
+  mutate(hashtags = tolower(hashtags))
+
+sixthday_group <- sixthdayhash_data %>%
+  group_by(hashtags) %>%
+  summarise(n_tweets = n()) %>%
+  filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
+
+sixthday_group <- sixthday_group %>%
+  filter(!grepl("harry", sixthday_group$hashtags)) 
+sixthday_group <- sixthday_group %>%
+  filter(!grepl("meghan", sixthday_group$hashtags)) 
+sixthday_group <- sixthday_group %>%
+  filter(!grepl("oprah", sixthday_group$hashtags))
+
+## top 10 hashtags
+sixthday_most <- sixthday_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+sixthday_most <- sixthday_most[1:10, ]
+  
+ggplot(sixthday_most, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+
+#### SEVENTH DAY
+seventhday <- data %>%
+  filter(Date == ymd("20210314"))
+
+seventhdayhash <- unlist(seventhday$hashtags)
+
+seventhdayhash_data <- as.data.frame(seventhdayhash)
+
+seventhdayhash_data <- seventhdayhash_data %>%
+  rename(hashtags = seventhdayhash) %>%
+  ## make all lowercase 
+  mutate(hashtags = tolower(hashtags))
+
+seventhday_group <- seventhdayhash_data %>%
+  group_by(hashtags) %>%
+  summarise(n_tweets = n()) %>%
+  filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
+
+seventhday_group <- seventhday_group %>%
+  filter(!grepl("harry", seventhday_group$hashtags)) 
+seventhday_group <- seventhday_group %>%
+  filter(!grepl("meghan", seventhday_group$hashtags)) 
+seventhday_group <- seventhday_group %>%
+  filter(!grepl("oprah", seventhday_group$hashtags))
+
+## top 10 hashtags
+seventhday_most <- seventhday_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+seventhday_most <- seventhday_most[1:10, ]
+  
+ggplot(seventhday_most, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+```
+
+
+
