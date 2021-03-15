@@ -179,8 +179,8 @@ ts_plot(data, "hours")
 ```
 
 
+### In what languages are people tweeting?
 ```{r freq language}
-## interview aired mar 7, in the evening (EST)
 freq_lang <- data %>%
   ## want to know # of tweets in each language
   group_by(language) %>%
@@ -218,48 +218,52 @@ ggplot(freq_lang, aes(language, n_tweets)) +
   xlab("Language") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
 
-## one value is much larger than the others
-### let's use facet_zoom from the ggforce package to show the original graph and another graph, zoomed in on the smaller values. 
-library(ggforce)
-ggplot(freq_lang, aes(language, n_tweets)) +
+# the graph is very crowded because of all the languages. Let's focus on the 10 most used languages in these tweets
+## we already ordered the dataframe by  ntweets, so i'll select the first 10 rows
+freq_lang_most <- freq_lang[1:10, ]
+
+## and now make the same plot with this smaller dataset
+ggplot(freq_lang_most, aes(language, n_tweets)) +
   geom_col() +
   ylab("Number of tweets") +
   xlab("Language") +
-  theme(axis.text.x = element_text(angle = -45, hjust = -.05)) +
-  facet_zoom(ylim = c(0, 1500))
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+  
 
-## I like the facet zoom, but the graph is very crowded because of all the languages. Let's focus on the 10 most used languages in these tweets
-## we already ordered the dataframe by  ntweets, so i'll select the first 10 rows
-freq_lang_most <- freq_lang[1:10, ]
-## and now make the same plot with this smaller dataset
+## That's better. but one value is much larger than the others
+### let's use facet_zoom from the ggforce package to show the original graph and another graph, zoomed in on the smaller values. 
+library(ggforce)
 ggplot(freq_lang_most, aes(language, n_tweets)) +
   geom_col() +
   ylab("Number of tweets") +
   xlab("Language") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05)) +
   facet_zoom(ylim = c(0, 1500))
-  
+
+
 ```
 
-### where are people tweeting from?
+### Where are people tweeting from?
 ```{r location}
+unique(data$place_full_name)
+sum(is.na(data$place_full_name))
+sum(data$place_full_name == "")
+
 loc <- data %>% 
-  ### lots of users turn off location data, so we can remove NAs
-  filter(!is.na(place_full_name)) %>% 
+  ### lots of users turn off location data, so let's remove the blank locations
+  filter(data$place_full_name != "") %>% 
   count(place_full_name, sort = TRUE) 
-# %>% 
-  ## look at top 5 locations
-  #top_n(5)
+
+view(loc)
 
 ## this doesn't seem very helpful
 ## most people didn't show location (96% of tweets)
-sum(is.na(data$place_full_name)) / length(data$place_full_name)
+sum(data$place_full_name == "") / length(data$place_full_name)
 ```
 
-### user id
+### Which users are tweeting about this the most?
+#### What languages are they tweeting in?
 ```{r user id}
-## who is tweeting the most?
-
 freq_user <- data %>%
   ## want to know # of tweets per user
   group_by(user_id, language) %>%
@@ -269,11 +273,10 @@ freq_user <- data %>%
 ## how often are individuals tweeting?
 ggplot(freq_user) +
   geom_histogram(aes(n_tweets))
+## most individuals are only tweeting once or twice
 
-mean(freq_user$n_tweets)
-quantile(freq_user$n_tweets)
 
-## what languages have the most unique users
+## which languages have the most unique users
 users_lang <- freq_user %>%
   group_by(language) %>%
   summarise(n_users = n(), n_tweets = sum(n_tweets))
@@ -302,11 +305,16 @@ ggplot(lang_most_users, aes(language, n_users)) +
   facet_zoom(ylim = c(0,1000))
 ```
 
-## what are the most common hashtags used in the same tweets?
+### What are the most common hashtags used in the same tweets?
 ```{r hashtags}
-hashtags <- data$hashtags
+head(data$hashtags)
 
-hashtags <- unlist(hashtags)
+## first we need to separate these character strings into each individual hashtag (at the space)
+## create a list of character vectors by splitting at the space
+data$hashtags <- str_split(data$hashtags, " ")
+
+## now we will unlist these - making each unique hashtag a separate row
+hashtags <- unlist(data$hashtags)
 
 hashtags_data <- as.data.frame(hashtags)
 ## in order for all hashtags (multiple hashtags in one tweet) to be a separate data point, need to do this from the rtweet data (not from the saved csv)
@@ -317,16 +325,15 @@ hashtags_all <- hashtags_data %>%
   ## make all lowercase 
   mutate(hashtags = tolower(hashtags))
 
+## find the number of times each hashtag is used
 hashtags_group <- hashtags_all %>%
   group_by(hashtags) %>%
   summarise(n_tweets = n()) %>%
+  ## I don't want to include hashtags directly related to the interview, since that is how I pulled these tweets from twitter in the first place
   filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
 
-mean(hashtags_group$n_tweets)
-median(hashtags_group$n_tweets)
-quantile(hashtags_group$n_tweets)
 
-## top 10 hashtags
+## get the top 10 hashtags
 hashtags_most <- hashtags_group %>%
   arrange(desc(n_tweets)) %>%
   mutate(hashtags = factor(hashtags, levels = hashtags))
@@ -338,15 +345,38 @@ ggplot(hashtags_most, aes(hashtags, n_tweets)) +
   ylab("Number of tweets") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
 
+## A lot of these hashtags are just harry or meghan. let's remove those to get a better sense of the other topics connected to the interview
+## I don't want to consider hashtags just about harry meghan and oprah
+hashtags_group <- hashtags_group %>%
+  filter(!grepl("harry", hashtags_group$hashtags)) 
+hashtags_group <- hashtags_group %>%
+  filter(!grepl("meghan", hashtags_group$hashtags)) 
+hashtags_group <- hashtags_group %>%
+  filter(!grepl("oprah", hashtags_group$hashtags))
+
+hashtags_most2 <- hashtags_group %>%
+  arrange(desc(n_tweets)) %>%
+  mutate(hashtags = factor(hashtags, levels = hashtags))
+hashtags_most2 <- hashtags_most2[1:10, ]
+  
+ggplot(hashtags_most2, aes(hashtags, n_tweets)) +
+  geom_col() +
+  xlab("Hashtag") +
+  ylab("Number of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+## This is much more interesting instead of just seeing the three people's names involved in the interview
+## let's do this for the remainder of these analyses
+
 ```
 
-## the previous graph shows us the top 10 hashtags over the last week. 
-## how did the accompanying hashtags change as the days passed? 
+#### the previous graph shows us the top 10 hashtags over the last week. 
+
+### how did the accompanying hashtags change as the days passed? 
 ```{r hashtags by day}
 ## a few ways to do this
-### I'll use a simple though not the most efficient way for now
+### I'll use a simple one by creating different datasets for each date
 
-### I'll create different datasets for each date
 #### FIRST DAY
 firstday <- data %>%
   filter(Date == ymd("20210308"))
@@ -363,23 +393,9 @@ firstdayhash_data <- firstdayhash_data %>%
 firstday_group <- firstdayhash_data %>%
   group_by(hashtags) %>%
   summarise(n_tweets = n()) %>%
-  ## I don't want to consider the hashtag I selected these tweets by (harryandmeghanonoprah)
   filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
 
-## top 10 hashtags
-firstday_most <- firstday_group %>%
-  arrange(desc(n_tweets)) %>%
-  mutate(hashtags = factor(hashtags, levels = hashtags))
-firstday_most <- firstday_most[1:10, ]
-  
-ggplot(firstday_most, aes(hashtags, n_tweets)) +
-  geom_col() +
-  xlab("Hashtag") +
-  ylab("Number of tweets") +
-  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
-
-## A lot of these hashtags are just harry or meghan or oprah. let's remove those to get a better sense of the other topics connected to this
-## I don't want to consider hashtags just about harry meghan and oprah
+## Again, I don't want to consider hashtags just about harry meghan and oprah
 firstday_group <- firstday_group %>%
   filter(!grepl("harry", firstday_group$hashtags)) 
 firstday_group <- firstday_group %>%
@@ -387,7 +403,6 @@ firstday_group <- firstday_group %>%
 firstday_group <- firstday_group %>%
   filter(!grepl("oprah", firstday_group$hashtags))
 
-
 ## top 10 hashtags
 firstday_most <- firstday_group %>%
   arrange(desc(n_tweets)) %>%
@@ -399,8 +414,6 @@ ggplot(firstday_most, aes(hashtags, n_tweets)) +
   xlab("Hashtag") +
   ylab("Number of tweets") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
-## This is much more interesting instead of just seeing the three people's names involved in the interview
-## let's do this for the rest of the days
 
 
 #### SECOND DAY
