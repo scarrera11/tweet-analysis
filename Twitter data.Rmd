@@ -390,9 +390,11 @@ firstdayhash_data <- firstdayhash_data %>%
   ## make all lowercase 
   mutate(hashtags = tolower(hashtags))
 
+## To compare across days, I'll look at the proportion of tweets that use each hashtag, not the number
+
 firstday_group <- firstdayhash_data %>%
   group_by(hashtags) %>%
-  summarise(n_tweets = n()) %>%
+  summarise(prop_tweets = n() / nrow(firstdayhash_data), n_tweets = n()) %>%
   filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
 
 ## Again, I don't want to consider hashtags just about harry meghan and oprah
@@ -405,14 +407,14 @@ firstday_group <- firstday_group %>%
 
 ## top 10 hashtags
 firstday_most <- firstday_group %>%
-  arrange(desc(n_tweets)) %>%
+  arrange(desc(prop_tweets)) %>%
   mutate(hashtags = factor(hashtags, levels = hashtags))
 firstday_most <- firstday_most[1:10, ]
   
-ggplot(firstday_most, aes(hashtags, n_tweets)) +
+ggplot(firstday_most, aes(hashtags, prop_tweets)) +
   geom_col() +
   xlab("Hashtag") +
-  ylab("Number of tweets") +
+  ylab("Proportion of tweets") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
 
 
@@ -431,7 +433,7 @@ seconddayhash_data <- seconddayhash_data %>%
 
 secondday_group <- seconddayhash_data %>%
   group_by(hashtags) %>%
-  summarise(n_tweets = n()) %>%
+  summarise(prop_tweets = n() / nrow(firstdayhash_data), n_tweets = n()) %>%
   filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
 
 secondday_group <- secondday_group %>%
@@ -442,14 +444,14 @@ secondday_group <- secondday_group %>%
   filter(!grepl("oprah", secondday_group$hashtags))
 ## top 10 hashtags
 secondday_most <- secondday_group %>%
-  arrange(desc(n_tweets)) %>%
+  arrange(desc(prop_tweets)) %>%
   mutate(hashtags = factor(hashtags, levels = hashtags))
 secondday_most <- secondday_most[1:10, ]
   
-ggplot(secondday_most, aes(hashtags, n_tweets)) +
+ggplot(secondday_most, aes(hashtags, prop_tweets)) +
   geom_col() +
   xlab("Hashtag") +
-  ylab("Number of tweets") +
+  ylab("Proportion of tweets") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
 
 
@@ -468,7 +470,7 @@ thirddayhash_data <- thirddayhash_data %>%
 
 thirdday_group <- thirddayhash_data %>%
   group_by(hashtags) %>%
-  summarise(n_tweets = n()) %>%
+  summarise(prop_tweets = n() / nrow(firstdayhash_data), n_tweets = n()) %>%
   filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
 
 thirdday_group <- thirdday_group %>%
@@ -480,14 +482,14 @@ thirdday_group <- thirdday_group %>%
 
 ## top 10 hashtags
 thirdday_most <- thirdday_group %>%
-  arrange(desc(n_tweets)) %>%
+  arrange(desc(prop_tweets)) %>%
   mutate(hashtags = factor(hashtags, levels = hashtags))
 thirdday_most <- thirdday_most[1:10, ]
   
-ggplot(thirdday_most, aes(hashtags, n_tweets)) +
+ggplot(thirdday_most, aes(hashtags, prop_tweets)) +
   geom_col() +
   xlab("Hashtag") +
-  ylab("Number of tweets") +
+  ylab("Proportion of tweets") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
 
 
@@ -506,7 +508,7 @@ fourthdayhash_data <- fourthdayhash_data %>%
 
 fourthday_group <- fourthdayhash_data %>%
   group_by(hashtags) %>%
-  summarise(n_tweets = n()) %>%
+  summarise(prop_tweets = n() / nrow(firstdayhash_data), n_tweets = n()) %>%
   filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
 
 fourthday_group <- fourthday_group %>%
@@ -518,14 +520,14 @@ fourthday_group <- fourthday_group %>%
 
 ## top 10 hashtags
 fourthday_most <- fourthday_group %>%
-  arrange(desc(n_tweets)) %>%
+  arrange(desc(prop_tweets)) %>%
   mutate(hashtags = factor(hashtags, levels = hashtags))
 fourthday_most <- fourthday_most[1:10, ]
   
-ggplot(fourthday_most, aes(hashtags, n_tweets)) +
+ggplot(fourthday_most, aes(hashtags, prop_tweets)) +
   geom_col() +
   xlab("Hashtag") +
-  ylab("Number of tweets") +
+  ylab("Proportion of tweets") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
 
 
@@ -544,7 +546,7 @@ fifthdayhash_data <- fifthdayhash_data %>%
 
 fifthday_group <- fifthdayhash_data %>%
   group_by(hashtags) %>%
-  summarise(n_tweets = n()) %>%
+  summarise(prop_tweets = n() / nrow(firstdayhash_data), n_tweets = n()) %>%
   filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
 
 fifthday_group <- fifthday_group %>%
@@ -556,14 +558,14 @@ fifthday_group <- fifthday_group %>%
 
 ## top 10 hashtags
 fifthday_most <- fifthday_group %>%
-  arrange(desc(n_tweets)) %>%
+  arrange(desc(prop_tweets)) %>%
   mutate(hashtags = factor(hashtags, levels = hashtags))
 fifthday_most <- fifthday_most[1:10, ]
   
-ggplot(fifthday_most, aes(hashtags, n_tweets)) +
+ggplot(fifthday_most, aes(hashtags, prop_tweets)) +
   geom_col() +
   xlab("Hashtag") +
-  ylab("Number of tweets") +
+  ylab("Proportion of tweets") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
 
 
@@ -582,7 +584,7 @@ sixthdayhash_data <- sixthdayhash_data %>%
 
 sixthday_group <- sixthdayhash_data %>%
   group_by(hashtags) %>%
-  summarise(n_tweets = n()) %>%
+  summarise(prop_tweets = n() / nrow(firstdayhash_data), n_tweets = n()) %>%
   filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
 
 sixthday_group <- sixthday_group %>%
@@ -594,14 +596,14 @@ sixthday_group <- sixthday_group %>%
 
 ## top 10 hashtags
 sixthday_most <- sixthday_group %>%
-  arrange(desc(n_tweets)) %>%
+  arrange(desc(prop_tweets)) %>%
   mutate(hashtags = factor(hashtags, levels = hashtags))
 sixthday_most <- sixthday_most[1:10, ]
   
-ggplot(sixthday_most, aes(hashtags, n_tweets)) +
+ggplot(sixthday_most, aes(hashtags, prop_tweets)) +
   geom_col() +
   xlab("Hashtag") +
-  ylab("Number of tweets") +
+  ylab("Proportion of tweets") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
 
 
@@ -620,7 +622,7 @@ seventhdayhash_data <- seventhdayhash_data %>%
 
 seventhday_group <- seventhdayhash_data %>%
   group_by(hashtags) %>%
-  summarise(n_tweets = n()) %>%
+  summarise(prop_tweets = n() / nrow(firstdayhash_data), n_tweets = n()) %>%
   filter(!(hashtags %in% c("harryandmeghanonoprah", "meghanandharryonoprah", "oprahmeghanharry")))
 
 seventhday_group <- seventhday_group %>%
@@ -632,14 +634,57 @@ seventhday_group <- seventhday_group %>%
 
 ## top 10 hashtags
 seventhday_most <- seventhday_group %>%
-  arrange(desc(n_tweets)) %>%
+  arrange(desc(prop_tweets)) %>%
   mutate(hashtags = factor(hashtags, levels = hashtags))
 seventhday_most <- seventhday_most[1:10, ]
   
-ggplot(seventhday_most, aes(hashtags, n_tweets)) +
+ggplot(seventhday_most, aes(hashtags, prop_tweets)) +
   geom_col() +
   xlab("Hashtag") +
-  ylab("Number of tweets") +
+  ylab("Proportion of tweets") +
+  theme(axis.text.x = element_text(angle = -45, hjust = -.05))
+
+```
+
+### let's combine these datasets to create a graph showing the change in the orportion of tweets using these hashtags across time
+```{r hashtags prop across days}
+## add a column to each dataset indicating which day it is
+seventhday_most2 <- seventhday_most %>%
+  mutate(Day = 7)
+sixthday_most2 <- sixthday_most %>%
+  mutate(Day = 6)
+fifthday_most2 <- fifthday_most %>%
+  mutate(Day = 5)
+fourthday_most2 <- fourthday_most %>%
+  mutate(Day = 4)
+thirdday_most2 <- thirdday_most %>%
+  mutate(Day = 3)
+secondday_most2 <- secondday_most %>%
+  mutate(Day = 2)
+firstday_most2 <- firstday_most %>%
+  mutate(Day = 1)
+
+alldays_most <- rbind(firstday_most2, secondday_most2, thirdday_most2, fourthday_most2, fifthday_most2, sixthday_most2, seventhday_most2)
+alldays_most$Day <- as.factor(alldays_most$Day)
+
+## let's focus at the hashtags that appear across the most days
+### how many days does each hashtag appear in?
+alldays_ndays <- alldays_most %>%
+  group_by(hashtags) %>%
+  summarise(n_days = n())
+### let's look at the top 10
+alldays_ndays <- alldays_ndays %>%
+  arrange(desc(n_days))
+alldays_ndays <- alldays_ndays[1:10, ]
+
+### use only these hashtags for the graph
+alldays_top <- left_join(alldays_ndays, alldays_most)
+
+
+ggplot(alldays_top, aes(hashtags, prop_tweets)) +
+  geom_col(aes(col = Day), position = "dodge") +
+  xlab("Hashtag") +
+  ylab("Proportion of tweets") +
   theme(axis.text.x = element_text(angle = -45, hjust = -.05))
 
 ```
